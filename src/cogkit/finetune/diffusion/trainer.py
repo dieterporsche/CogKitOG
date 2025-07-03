@@ -227,6 +227,25 @@ class DiffusionTrainer(BaseTrainer):
             video = video[0] if video else None
             encoded_video = batch.get("encoded_video", None)
 
+            
+            # --- NEUER CODE: Original-Dateiname als Basis verwenden ---
+
+            from pathlib import Path
+            
+            orig_fname = None
+
+            if "image_filename" in batch:
+                orig_fname = batch["image_filename"][0]
+            elif "video_filename" in batch:
+                orig_fname = batch["video_filename"][0]
+
+            if orig_fname:
+                base_name = Path(orig_fname).stem
+            else:
+                base_name = f"artifact-process{self.accelerator.process_index}-batch{i}"
+
+            # -----------------------------------------------------------
+
             self.logger.debug(
                 f"Validating sample {i + 1}/{num_validation_samples} on process {self.accelerator.process_index}. Prompt: {prompt}",
                 main_process_only=False,
@@ -246,20 +265,37 @@ class DiffusionTrainer(BaseTrainer):
             artifacts = {}
             val_path = self.args.output_dir / "validation_res" / f"validation-{step}"
             val_path.mkdir(parents=True, exist_ok=True)
-            filename = f"artifact-process{self.accelerator.process_index}-batch{i}"
+            filename = base_name
+            #filename = f"artifact-process{self.accelerator.process_index}-batch{i}"
 
-            image = val_res.get("image", None)
-            video = val_res.get("video", None)
+            # image = val_res.get("image", None)
+            # video = val_res.get("video", None)
             with open(val_path / f"{filename}.txt", "w") as f:
-                f.write(prompt)
-            if image:
-                fpath = str(val_path / f"{filename}.png")
-                image.save(fpath)
-                artifacts["image"] = wandb.Image(fpath, caption=prompt)
-            if video:
-                fpath = str(val_path / f"{filename}.mp4")
-                export_to_video(video, fpath, fps=self.args.gen_fps)
-                artifacts["video"] = wandb.Video(fpath, caption=prompt)
+            #     f.write(prompt)
+            # if image:
+            #     fpath = str(val_path / f"{filename}.png")
+            #     image.save(fpath)
+            #     artifacts["image"] = wandb.Image(fpath, caption=prompt)
+            # if video:
+            #     fpath = str(val_path / f"{filename}.mp4")
+            #     export_to_video(video, fpath, fps=self.args.gen_fps)
+            #     artifacts["video"] = wandb.Video(fpath, caption=prompt)
+
+                f.write(prompt or "")
+
+            # save image
+            if val_res.get("image", None):
+                img = val_res["image"]
+                fpath = val_path / f"{filename}.png"
+                img.save(fpath)
+                artifacts["image"] = wandb.Image(str(fpath), caption=prompt)
+
+            # save video
+            if val_res.get("video", None):
+                vid = val_res["video"]
+                fpath = val_path / f"{filename}.mp4"
+                export_to_video(vid, str(fpath), fps=self.args.gen_fps)
+                artifacts["video"] = wandb.Video(str(fpath), caption=prompt)
 
             all_processes_artifacts.append(artifacts)
 
