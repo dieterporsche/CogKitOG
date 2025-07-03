@@ -375,7 +375,10 @@ class BaseTrainer(ABC):
                 if accelerator.sync_gradients:
                     progress_bar.update(1)
                     global_step += 1
-                    ckpt_path = self.maybe_save_checkpoint(global_step)
+                    if not self.args.checkpoint_each_epoch:
+                        ckpt_path = self.maybe_save_checkpoint(global_step)
+                    else:
+                        ckpt_path = None
 
                     logs["loss"] = loss.detach().item()
                     logs["lr"] = self.lr_scheduler.get_last_lr()[0]
@@ -402,8 +405,16 @@ class BaseTrainer(ABC):
                 f"Memory after epoch {epoch + 1}: {json.dumps(memory_statistics, indent=4)}"
             )
 
+            if self.args.checkpoint_each_epoch:
+                ckpt_path = self.maybe_save_checkpoint(
+                    global_step, epoch=epoch + 1, must_save=True
+                )
+
         accelerator.wait_for_everyone()
-        ckpt_path = self.maybe_save_checkpoint(global_step, must_save=True)
+        if not self.args.checkpoint_each_epoch:
+            ckpt_path = self.maybe_save_checkpoint(global_step, must_save=True)
+        else:
+            ckpt_path = None
         if self.args.do_validation:
             free_memory()
             self.validate(global_step, ckpt_path=ckpt_path)
@@ -529,16 +540,25 @@ class BaseTrainer(ABC):
         self.accelerator.register_save_state_pre_hook(save_model_hook)
         self.accelerator.register_load_state_pre_hook(load_model_hook)
 
-    def maybe_save_checkpoint(self, global_step: int, must_save: bool = False) -> str | None:
-        if not (must_save or global_step % self.args.checkpointing_steps == 0):
-            return None
+    def maybe_save_checkpoint(
+        self, global_step: int, epoch: int | None = None, must_save: bool = False
+    ) -> str | None:
+        if not must_save:
+            if self.args.checkpoint_each_epoch:
+                return None
+            if (
+                self.args.checkpointing_steps is None
+                or global_step % self.args.checkpointing_steps != 0
+            ):
+                return None
 
         checkpointing_limit = self.args.checkpointing_limit
         output_dir = Path(self.args.output_dir)
         logger = self.logger
 
+        prefix = "Checkpoint_Epoch" if epoch is not None else "checkpoint"
         if checkpointing_limit is not None:
-            checkpoints = find_files(output_dir, prefix="checkpoint")
+            checkpoints = find_files(output_dir, prefix=prefix)
 
             # before we save the new checkpoint, we need to have at_most `checkpoints_total_limit - 1` checkpoints
             if len(checkpoints) >= checkpointing_limit:
@@ -547,8 +567,12 @@ class BaseTrainer(ABC):
                 if self.accelerator.is_main_process:
                     delete_files(checkpoints_to_remove, logger)
 
-        logger.info(f"Checkpointing at step {global_step}")
-        save_path = output_dir / f"checkpoint-{global_step}"
+        if epoch is not None:
+            logger.info(f"Checkpointing at epoch {epoch}")
+            save_path = output_dir / f"Checkpoint_Epoch{epoch}"
+        else:
+            logger.info(f"Checkpointing at step {global_step}")
+            save_path = output_dir / f"checkpoint-{global_step}"
         logger.info(f"Saving state to {save_path}")
 
         self.accelerator.save_state(save_path, safe_serialization=True)

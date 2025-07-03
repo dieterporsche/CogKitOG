@@ -30,8 +30,9 @@ class BaseArgs(BaseModel):
     seed: int | None = None
     train_epochs: int
     train_steps: int | None = None
-    checkpointing_steps: int = 200
+    checkpointing_steps: int | None = 200
     checkpointing_limit: int = 10
+    checkpoint_each_epoch: bool = False
 
     batch_size: int
     gradient_accumulation_steps: int = 1
@@ -149,7 +150,10 @@ class BaseArgs(BaseModel):
         )
 
         # Checkpointing
-        parser.add_argument("--checkpointing_steps", type=int, default=200)
+        parser.add_argument("--checkpointing_steps", type=int, default=None)
+        parser.add_argument(
+            "--checkpoint_each_epoch", type=lambda x: x.lower() == "true", default=False
+        )
         parser.add_argument("--checkpointing_limit", type=int, default=10)
         parser.add_argument("--resume_from_checkpoint", type=str, default=None)
 

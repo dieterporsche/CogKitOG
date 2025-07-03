@@ -47,7 +47,7 @@ SYSTEM_ARGS=(
 
 # Checkpointing Configuration
 CHECKPOINT_ARGS=(
-    --checkpointing_steps 200  # save checkpoint every x steps
+    --checkpoint_each_epoch true  # save checkpoint after each epoch
     --checkpointing_limit 2   # maximum number of checkpoints to keep, after which the oldest one is deleted
     # --resume_from_checkpoint "/absolute/path/to/checkpoint_dir"  # if you want to resume from a checkpoint
 )
