@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from ..utils.file_utils import delete_files, find_files
+from ..utils.file_utils import delete_files, find_files, extract_ckpt_number
 
 
 def get_latest_ckpt_path_to_resume_from(
@@ -24,7 +24,7 @@ def get_latest_ckpt_path_to_resume_from(
             resume_from_checkpoint_path = None
         else:
             logger.info(f"Resuming from checkpoint {resume_from_checkpoint}")
-            global_step = int(resume_from_checkpoint_path.name.split("-")[1])
+            global_step = extract_ckpt_number(resume_from_checkpoint_path.name)
 
             initial_global_step = global_step
             first_epoch = global_step // num_update_steps_per_epoch

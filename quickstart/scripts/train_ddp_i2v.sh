@@ -55,7 +55,7 @@ CHECKPOINT_ARGS=(
 # Validation Configuration
 VALIDATION_ARGS=(
     --do_validation false   # ["true", "false"]
-    --validation_steps 200  # should be multiple of checkpointing_steps
+    --validation_steps 200  # ignored when checkpoint_each_epoch is true
     --gen_fps 16
 )
 

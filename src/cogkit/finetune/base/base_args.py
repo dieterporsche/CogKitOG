@@ -30,7 +30,7 @@ class BaseArgs(BaseModel):
     seed: int | None = None
     train_epochs: int
     train_steps: int | None = None
-    checkpointing_steps: int | None = 200
+    checkpointing_steps: int | None = None
     checkpointing_limit: int = 10
     checkpoint_each_epoch: bool = False
 
@@ -79,8 +79,12 @@ class BaseArgs(BaseModel):
     def validate_validation_steps(cls, v: int | None, info: ValidationInfo) -> int | None:
         values = info.data
         if values.get("do_validation"):
+            if values.get("checkpoint_each_epoch"):
+                return v
             if v is None:
-                raise ValueError("validation_steps must be specified when do_validation is True")
+                raise ValueError(
+                    "validation_steps must be specified when do_validation is True and checkpoint_each_epoch is False"
+                )
             if values.get("checkpointing_steps") and v % values["checkpointing_steps"] != 0:
                 raise ValueError("validation_steps must be a multiple of checkpointing_steps")
         return v

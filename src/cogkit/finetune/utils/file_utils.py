@@ -1,6 +1,12 @@
 import os
+import re
 import shutil
 from pathlib import Path
+
+
+def extract_ckpt_number(name: str) -> int:
+    match = re.search(r"(\d+)$", name)
+    return int(match.group(1)) if match else -1
 
 
 def find_files(dir: str | Path, prefix: str = "checkpoint") -> list[str]:
@@ -10,7 +16,7 @@ def find_files(dir: str | Path, prefix: str = "checkpoint") -> list[str]:
         return []
     checkpoints = os.listdir(dir.as_posix())
     checkpoints = [c for c in checkpoints if c.startswith(prefix)]
-    checkpoints = sorted(checkpoints, key=lambda x: int(x.split("-")[1]))
+    checkpoints = sorted(checkpoints, key=extract_ckpt_number)
     checkpoints = [dir / c for c in checkpoints]
     return checkpoints
 

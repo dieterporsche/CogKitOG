@@ -387,6 +387,8 @@ class BaseTrainer(ABC):
                     # Maybe run validation
                     should_run_validation = (
                         self.args.do_validation
+                        and not self.args.checkpoint_each_epoch
+                        and self.args.validation_steps is not None
                         and global_step % self.args.validation_steps == 0
                         and accelerator.sync_gradients
                     )
@@ -556,7 +558,7 @@ class BaseTrainer(ABC):
         output_dir = Path(self.args.output_dir)
         logger = self.logger
 
-        prefix = "Checkpoint_Epoch" if epoch is not None else "checkpoint"
+        prefix = "Checkpoint_Epoch-" if epoch is not None else "checkpoint"
         if checkpointing_limit is not None:
             checkpoints = find_files(output_dir, prefix=prefix)
 
@@ -569,7 +571,7 @@ class BaseTrainer(ABC):
 
         if epoch is not None:
             logger.info(f"Checkpointing at epoch {epoch}")
-            save_path = output_dir / f"Checkpoint_Epoch{epoch}"
+            save_path = output_dir / f"Checkpoint_Epoch-{epoch}"
         else:
             logger.info(f"Checkpointing at step {global_step}")
             save_path = output_dir / f"checkpoint-{global_step}"
